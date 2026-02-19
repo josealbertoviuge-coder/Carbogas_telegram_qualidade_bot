@@ -24,11 +24,16 @@ app.post(`/bot${TOKEN}`, async (req, res) => {
 
   const chatId = msg.chat.id;
 
-  if (msg.text) {
-    console.log("Texto:", msg.text);
+if (msg.voice) {
+  console.log("Áudio recebido!");
 
-    await enviarMensagem(chatId, "Recebi: " + msg.text);
-  }
+  await enviarMensagem(chatId, "🎤 Áudio recebido!");
+
+} else if (msg.text) {
+  console.log("Texto:", msg.text);
+
+  await enviarMensagem(chatId, "Recebi: " + msg.text);
+}
 
   res.sendStatus(200);
 });
