@@ -28,6 +28,18 @@ if (msg.voice) {
   console.log("Áudio recebido!");
 
   await enviarMensagem(chatId, "🎤 Áudio recebido!");
+  const fileId = msg.voice.file_id;
+
+// obter caminho do arquivo
+const fileInfo = await fetch(
+  `https://api.telegram.org/bot${TOKEN}/getFile?file_id=${fileId}`
+).then(r => r.json());
+
+const filePath = fileInfo.result.file_path;
+
+const fileUrl = `https://api.telegram.org/file/bot${TOKEN}/${filePath}`;
+
+console.log("URL do áudio:", fileUrl);
 
 } else if (msg.text) {
   console.log("Texto:", msg.text);
