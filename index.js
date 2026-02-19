@@ -7,7 +7,7 @@ app.use(express.json());
 const TOKEN = process.env.TELEGRAM_TOKEN;
 
 async function enviarMensagem(chatId, texto) {
-  await fetch(`https://api.telegram.org/bot${8294267757:AAG6F4Lp0ivlxZxWfp7O2xApWuFuyAyUBy0}/sendMessage`, {
+  await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
