@@ -17,7 +17,7 @@ async function enviarMensagem(chatId, texto) {
   });
 }
 
-app.post(`/bot${8294267757:AAG6F4Lp0ivlxZxWfp7O2xApWuFuyAyUBy0}`, async (req, res) => {
+app.post(`/bot${TOKEN}`, async (req, res) => {
   const msg = req.body.message;
 
   if (!msg) return res.sendStatus(200);
