@@ -233,15 +233,18 @@ try {
   const [acao, id] = data.split("|");
 
   // ❌ CANCELAR
-  if (acao === "cancelar") {
-    pendentes.delete(id);
-await enviarMensagem(
-  chatId,
-  "❌ Registro cancelado.",
-  registro.messageId
-);
-    return res.sendStatus(200);
-  }
+const registro = pendentes.get(id);
+
+if (acao === "cancelar") {
+  await enviarMensagem(
+    chatId,
+    "❌ Registro cancelado.",
+    registro?.messageId
+  );
+
+  pendentes.delete(id);
+  return res.sendStatus(200);
+}
 
   // ✅ CONFIRMAR
   if (acao === "confirmar") {
