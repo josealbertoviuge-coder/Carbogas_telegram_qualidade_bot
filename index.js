@@ -65,13 +65,13 @@ function converterNumeros(texto) {
 function extrairCampos(texto) {
   const dados = {};
 
-  const tag = texto.match(/\bTAG\s+(\S+)/);
+  const tag = texto.match(/\bTAG\s+([A-Z0-9\-]+)/);
   if (tag) dados.tag = tag[1];
 
-  const ordem = texto.match(/\b(?:ORDEM(?:\s+DE\s+PRODUÇÃO)?|OP)\s+(\S+)/);
+  const ordem = texto.match(/\b(?:ORDEM(?:\s+DE\s+PRODUÇÃO)?|OP)\s+([A-Z0-9\/\-]+)/);
   if (ordem) dados.ordem = ordem[1];
 
-  const observacoes = texto.match(/\bOBSERVAÇÕES\s+(\d+)/);
+  const observacoes = texto.match(/\bOBSERVAÇÕES?\s+(.+)/);
   if (observacoes) dados.observacoes = observacoes[1];
 
   return dados;
