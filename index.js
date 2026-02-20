@@ -24,7 +24,12 @@ async function transcreverAudio(fileUrl) {
 
   const form = new FormData();
   form.append("file", Buffer.from(buffer), "audio.ogg");
-  form.append("model", "whisper-1");
+  form.append("model", "gpt-4o-mini-transcribe");
+  form.append("language", "pt");
+  form.append(
+  "prompt",
+  "Relatório de produção industrial em português do Brasil."
+);
 
   const resp = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
