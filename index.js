@@ -7,6 +7,58 @@ app.use(express.json());
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
 
+function normalizarTexto(texto) {
+  const substituicoes = {
+    "barra": "/",
+    "dois pontos": ":",
+    "vírgula": ",",
+    "ponto": "."
+  };
+
+  texto = texto.toLowerCase();
+
+  // substituições especiais
+  Object.keys(substituicoes).forEach(palavra => {
+    const regex = new RegExp(`\\b${palavra}\\b`, "gi");
+    texto = texto.replace(regex, substituicoes[palavra]);
+  });
+
+  // padronização de termos importantes
+  texto = texto
+    .replace(/\btag\b/gi, "TAG")
+    .replace(/\bordem\b/gi, "ORDEM")
+    .replace(/\bprodução\b/gi, "PRODUÇÃO")
+    .replace(/\bobservação\b/gi, "OBSERVAÇÃO");
+
+  return texto;
+}
+
+function converterNumeros(texto) {
+  const mapa = {
+    zero: 0,
+    um: 1,
+    uma: 1,
+    dois: 2,
+    duas: 2,
+    tres: 3,
+    três: 3,
+    quatro: 4,
+    cinco: 5,
+    seis: 6,
+    sete: 7,
+    oito: 8,
+    nove: 9,
+    dez: 10
+  };
+
+  Object.keys(mapa).forEach(palavra => {
+    const regex = new RegExp(`\\b${palavra}\\b`, "gi");
+    texto = texto.replace(regex, mapa[palavra]);
+  });
+
+  return texto;
+}
+
 async function enviarMensagem(chatId, texto) {
   await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: "POST",
@@ -71,10 +123,16 @@ if (msg.voice) {
   console.log("URL do áudio:", fileUrl);
 
   // 🎤 TRANSCRIÇÃO
-  const texto = await transcreverAudio(fileUrl);
+let texto = await transcreverAudio(fileUrl);
+
+// aplica inteligência
+texto = normalizarTexto(texto);
+texto = converterNumeros(texto);
+
+console.log("Texto processado:", texto);
 
   if (texto) {
-    await enviarMensagem(chatId, "📝 Transcrição:\n" + texto);
+    await enviarMensagem(chatId, "📝 Registro:\n" + texto);
   } else {
     await enviarMensagem(chatId, "Não consegui entender o áudio.");
   }
