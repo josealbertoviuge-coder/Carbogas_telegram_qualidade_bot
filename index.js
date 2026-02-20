@@ -66,13 +66,19 @@ function extrairCampos(texto) {
   const dados = {};
 
   const tag = texto.match(/\bTAG\s+([A-Z0-9\-]+)/);
-  if (tag) dados.tag = tag[1];
+  if (tag && tag[1]) {
+    dados.tag = tag[1].trim();
+  }
 
   const OP = texto.match(/\b(?:ORDEM(?:\s+DE\s+PRODUÇÃO)?|OP)\s+([A-Z0-9\/\-]+)/);
-  if (OP) dados.OP = OP[1];
+  if (OP && OP[1]) {
+    dados.OP = OP[1].trim();
+  }
 
   const observacoes = texto.match(/\bOBSERVAÇÕES?\s+(.+)/);
-  if (observacoes) dados.observacoes = observacoes[1];
+  if (observacoes && observacoes[1]) {
+    dados.observacoes = observacoes[1].trim();
+  }
 
   return dados;
 }
@@ -161,6 +167,14 @@ texto = normalizarTexto(texto);
 texto = converterNumeros(texto);
 const dados = extrairCampos(texto);
 console.log("Dados extraídos:", dados);
+
+// ❗ não salvar se não houver TAG
+if (!dados.tag) {
+  await enviarMensagem(chatId, "⚠️ TAG não informada.");
+  return res.sendStatus(200);
+}
+
+// salva apenas se válido
 await salvarSupabase(dados);
 
 console.log("Texto processado:", texto);
