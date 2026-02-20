@@ -63,6 +63,12 @@ Os dados estão corretos?`,
 
   const json = await resp.json();
 
+  // ✅ VERIFICA ERRO DO TELEGRAM
+  if (!resp.ok || !json.ok) {
+    console.log("Erro Telegram:", json);
+    return;
+  }
+
   // salva message_id do registro
   pendentes.set(id, {
     dados,
@@ -70,10 +76,11 @@ Os dados estão corretos?`,
     messageId: json.result.message_id
   });
 
-setTimeout(() => {
-  const reg = pendentes.get(id);
-  if (reg) reg.expirado = true;
-}, 30 * 60 * 1000);
+  // expiração
+  setTimeout(() => {
+    const reg = pendentes.get(id);
+    if (reg) reg.expirado = true;
+  }, 30 * 60 * 1000);
 }
 
 function normalizarTexto(texto) {
@@ -218,49 +225,43 @@ if (req.body.callback_query) {
   const chatId = query.message.chat.id;
   const data = query.data;
 
-  // remove loading do botão
-try {
-  await fetch(`https://api.telegram.org/bot${TOKEN}/answerCallbackQuery`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ callback_query_id: query.id })
-  });
-} catch {}
+  try {
+    await fetch(`https://api.telegram.org/bot${TOKEN}/answerCallbackQuery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ callback_query_id: query.id })
+    });
+  } catch {}
 
-  // remove botões após clicar
-  await removerBotoes(chatId, query.message.message_id);
+  await removerBotoes(chatId, query.message.message_id).catch(()=>{});
 
   const [acao, id] = data.split("|");
+  const registro = pendentes.get(id);
 
   // ❌ CANCELAR
-const registro = pendentes.get(id);
+  if (acao === "cancelar") {
+    await enviarMensagem(
+      chatId,
+      "❌ Registro cancelado.",
+      registro?.messageId
+    );
+    pendentes.delete(id);
+    return res.sendStatus(200);
+  }
 
-if (acao === "cancelar") {
-  await enviarMensagem(
-    chatId,
-    "❌ Registro cancelado.",
-    registro?.messageId
-  );
-
-  pendentes.delete(id);
-  return res.sendStatus(200);
-}
+  // ⚠️ EXPIRADO
+  if (!registro || registro.expirado) {
+    await enviarMensagem(
+      chatId,
+      "⚠️ Registro expirado.",
+      registro?.messageId
+    );
+    pendentes.delete(id);
+    return res.sendStatus(200);
+  }
 
   // ✅ CONFIRMAR
   if (acao === "confirmar") {
-    const registro = pendentes.get(id);
-
-if (!registro || registro.expirado) {
-  await enviarMensagem(
-    chatId,
-    "⚠️ Registro expirado.",
-    registro?.messageId
-  );
-
-  pendentes.delete(id);
-  return res.sendStatus(200);
-}
-
     try {
       await salvarSupabase(registro.dados);
     } catch (err) {
@@ -271,11 +272,12 @@ if (!registro || registro.expirado) {
 
     pendentes.delete(id);
 
-await enviarMensagem(
-  chatId,
-  "✅ Dados gravados com sucesso!",
-  registro.messageId
-);
+    await enviarMensagem(
+      chatId,
+      "✅ Dados gravados com sucesso!",
+      registro.messageId
+    );
+
     return res.sendStatus(200);
   }
 }
