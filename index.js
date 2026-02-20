@@ -34,6 +34,7 @@ async function enviarConfirmacao(chatId, dados, tabela) {
 
   // salva temporariamente
   pendentes.set(id, { dados, tabela });
+  setTimeout(() => pendentes.delete(id), 30 * 60 * 1000);
 
   await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: "POST",
@@ -196,13 +197,13 @@ if (req.body.callback_query) {
   const data = query.data;
 
   // remove loading do botão
+try {
   await fetch(`https://api.telegram.org/bot${TOKEN}/answerCallbackQuery`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      callback_query_id: query.id
-    })
+    body: JSON.stringify({ callback_query_id: query.id })
   });
+} catch {}
 
   // remove botões após clicar
   await removerBotoes(chatId, query.message.message_id);
