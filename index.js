@@ -70,9 +70,9 @@ function extrairCampos(texto) {
     dados.tag = tag[1].trim();
   }
 
-  const OP = texto.match(/\b(?:ORDEM(?:\s+DE\s+PRODUÇÃO)?|OP)\s+([A-Z0-9\/\-]+)/);
-  if (OP && OP[1]) {
-    dados.OP = OP[1].trim();
+  const op = texto.match(/\b(?:ORDEM(?:\s+DE\s+PRODUÇÃO)?|OP)\s+([A-Z0-9\/\-]+)/);
+  if (op && op[1]) {
+    dados.op = op[1].trim();
   }
 
   const observacoes = texto.match(/\bOBSERVAÇÕES?\s+(.+)/);
