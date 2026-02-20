@@ -51,20 +51,28 @@ app.post(`/bot${TOKEN}`, async (req, res) => {
 if (msg.voice) {
   console.log("Áudio recebido!");
 
-  await enviarMensagem(chatId, "🎤 Áudio recebido!");
+  await enviarMensagem(chatId, "🎧 ouvindo áudio...");
+
   const fileId = msg.voice.file_id;
 
-// obter caminho do arquivo
-const fileInfo = await fetch(
-  `https://api.telegram.org/bot${TOKEN}/getFile?file_id=${fileId}`
-).then(r => r.json());
+  const fileInfo = await fetch(
+    `https://api.telegram.org/bot${TOKEN}/getFile?file_id=${fileId}`
+  ).then(r => r.json());
 
-const filePath = fileInfo.result.file_path;
+  const filePath = fileInfo.result.file_path;
 
-const fileUrl = `https://api.telegram.org/file/bot${TOKEN}/${filePath}`;
+  const fileUrl = `https://api.telegram.org/file/bot${TOKEN}/${filePath}`;
 
-console.log("URL do áudio:", fileUrl);
+  console.log("URL do áudio:", fileUrl);
 
+  // 🎤 TRANSCRIÇÃO
+  const texto = await transcreverAudio(fileUrl);
+
+  if (texto) {
+    await enviarMensagem(chatId, "📝 Transcrição:\n" + texto);
+  } else {
+    await enviarMensagem(chatId, "Não consegui entender o áudio.");
+  }
 } else if (msg.text) {
   console.log("Texto:", msg.text);
 
