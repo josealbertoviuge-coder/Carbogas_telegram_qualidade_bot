@@ -2,10 +2,15 @@ import express from "express";
 import fetch from "node-fetch";
 import FormData from "form-data";
 
+const pendentes = new Map();
 const app = express();
 app.use(express.json());
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
+
+function gerarId() {
+  return Math.random().toString(36).substring(2, 8);
+}
 
 async function removerBotoes(chatId, messageId) {
   await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageReplyMarkup`, {
@@ -25,6 +30,11 @@ function extrairTabela(texto) {
 }
 
 async function enviarConfirmacao(chatId, dados, tabela) {
+  const id = gerarId();
+
+  // salva temporariamente
+  pendentes.set(id, { dados, tabela });
+
   await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -35,8 +45,8 @@ async function enviarConfirmacao(chatId, dados, tabela) {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "✅ SIM", callback_data: `confirmar|${tabela}|${JSON.stringify(dados)}` },
-            { text: "❌ NÃO", callback_data: "cancelar" }
+            { text: "✅ SIM", callback_data: `confirmar|${id}` },
+            { text: "❌ NÃO", callback_data: `cancelar|${id}` }
           ]
         ]
       }
@@ -194,31 +204,36 @@ if (req.body.callback_query) {
     })
   });
 
-  // 🟢 remove botões após clicar
+  // remove botões após clicar
   await removerBotoes(chatId, query.message.message_id);
 
-  if (data === "cancelar") {
+  const [acao, id] = data.split("|");
+
+  // ❌ CANCELAR
+  if (acao === "cancelar") {
+    pendentes.delete(id);
     await enviarMensagem(chatId, "❌ Registro cancelado.");
     return res.sendStatus(200);
   }
 
-  if (data.startsWith("confirmar")) {
-    const [, tabela, json] = data.split("|");
-let dados;
-try {
-  dados = JSON.parse(json);
-} catch {
-  await enviarMensagem(chatId, "Erro ao processar os dados.");
-  return res.sendStatus(200);
-}
+  // ✅ CONFIRMAR
+  if (acao === "confirmar") {
+    const registro = pendentes.get(id);
 
-try {
-  await salvarSupabase(dados);
-} catch (err) {
-  console.log(err);
-  await enviarMensagem(chatId, "Erro ao salvar no banco.");
-  return res.sendStatus(200);
-}
+    if (!registro) {
+      await enviarMensagem(chatId, "⚠️ Registro expirado.");
+      return res.sendStatus(200);
+    }
+
+    try {
+      await salvarSupabase(registro.dados);
+    } catch (err) {
+      console.log(err);
+      await enviarMensagem(chatId, "Erro ao salvar no banco.");
+      return res.sendStatus(200);
+    }
+
+    pendentes.delete(id);
 
     await enviarMensagem(chatId, "✅ Dados gravados com sucesso!");
     return res.sendStatus(200);
