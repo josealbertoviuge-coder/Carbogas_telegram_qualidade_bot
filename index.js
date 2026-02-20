@@ -12,6 +12,7 @@ function normalizarTexto(texto) {
     "barra": "/",
     "dois pontos": ":",
     "vírgula": ",",
+    "traço": "-",
     "ponto": "."
   };
 
@@ -47,8 +48,7 @@ function converterNumeros(texto) {
     seis: 6,
     sete: 7,
     oito: 8,
-    nove: 9,
-    dez: 10
+    nove: 9
   };
 
   Object.keys(mapa).forEach(palavra => {
