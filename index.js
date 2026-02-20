@@ -1,5 +1,6 @@
 import express from "express";
 import fetch from "node-fetch";
+import FormData from "form-data";
 
 const app = express();
 app.use(express.json());
@@ -15,6 +16,29 @@ async function enviarMensagem(chatId, texto) {
       text: texto
     })
   });
+}
+
+async function transcreverAudio(fileUrl) {
+  const audioResp = await fetch(fileUrl);
+  const buffer = await audioResp.arrayBuffer();
+
+  const form = new FormData();
+  form.append("file", Buffer.from(buffer), "audio.ogg");
+  form.append("model", "whisper-1");
+
+  const resp = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_KEY}`
+    },
+    body: form
+  });
+
+  const data = await resp.json();
+
+  console.log("Resposta OpenAI:", data);
+
+  return data.text;
 }
 
 app.post(`/bot${TOKEN}`, async (req, res) => {
