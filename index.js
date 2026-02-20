@@ -10,8 +10,6 @@ const TOKEN = process.env.TELEGRAM_TOKEN;
 function normalizarTexto(texto) {
   const substituicoes = {
     "barra": "/",
-    "dois pontos": ":",
-    "vírgula": ",",
     "traço": "-",
     "não aplicável": "N/A",
     "ponto": "."
@@ -25,13 +23,17 @@ function normalizarTexto(texto) {
     texto = texto.replace(regex, substituicoes[palavra]);
   });
 
+  // remove dois pontos
+texto = texto.replace(/:/g, "");
+  
   // padronização de termos importantes
   texto = texto
     .replace(/\btag\b/gi, "TAG")
     .replace(/\bordem\b/gi, "ORDEM")
     .replace(/\bprodução\b/gi, "PRODUÇÃO")
-    .replace(/\bobservação\b/gi, "OBSERVAÇÃO");
-
+    .replace(/\bobservações\b/gi, "OBSERVAÇÕES");
+  
+  texto = texto.toUpperCase();
   return texto;
 }
 
