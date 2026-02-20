@@ -61,11 +61,17 @@ Os dados estão corretos?`,
     })
   });
 
-  const json = await resp.json();
+  let json;
 
-  // ✅ VERIFICA ERRO DO TELEGRAM
+  try {
+    json = await resp.json();
+  } catch {
+    console.log("Resposta inválida do Telegram");
+    return;
+  }
+
   if (!resp.ok || !json.ok) {
-    console.log("Erro Telegram:", json);
+    console.log("Erro Telegram:", json.description);
     return;
   }
 
@@ -76,7 +82,6 @@ Os dados estão corretos?`,
     messageId: json.result.message_id
   });
 
-  // expiração
   setTimeout(() => {
     const reg = pendentes.get(id);
     if (reg) reg.expirado = true;
@@ -240,7 +245,6 @@ if (req.body.callback_query) {
 
   // ❌ CANCELAR
 if (acao === "cancelar") {
-  const registro = pendentes.get(id);
 
   pendentes.delete(id);
 
