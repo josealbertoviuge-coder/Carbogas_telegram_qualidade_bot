@@ -33,7 +33,7 @@ function extrairTabela(texto) {
   return match ? match[1].toLowerCase() : null;
 }
 
-async function enviarConfirmacao(chatId, dados, tabela) {
+async function enviarConfirmacao(chatId, dados, tabela, replyTo) {
   const id = gerarId();
 
   // salva temporariamente
@@ -45,8 +45,15 @@ async function enviarConfirmacao(chatId, dados, tabela) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId,
+      reply_to_message_id: replyTo,   // ⭐ liga resposta ao áudio correto
       text:
-        `📋 REGISTRO:\n\nTAG: ${dados.tag}\nOP: ${dados.op || "-"}\nOBS: ${dados.observacoes || "-"}\n\nOs dados estão corretos?`,
+`📋 REGISTRO:
+
+TAG: ${dados.tag}
+OP: ${dados.op || "-"}
+OBS: ${dados.observacoes || "-"}
+
+Os dados estão corretos?`,
       reply_markup: {
         inline_keyboard: [
           [
@@ -153,13 +160,14 @@ async function salvarSupabase(dados) {
   }
 }
 
-async function enviarMensagem(chatId, texto) {
+async function enviarMensagem(chatId, texto, replyTo) {
   await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId,
-      text: texto
+      text: texto,
+      reply_to_message_id: replyTo || undefined
     })
   });
 }
@@ -251,9 +259,10 @@ try {
   const chatId = msg.chat.id;
 
 if (msg.voice) {
+  const audioMsgId = msg.message_id;
   console.log("Áudio recebido!");
 
-  await enviarMensagem(chatId, "🎧 ouvindo áudio...");
+await enviarMensagem(chatId, "🎧 Ouvindo este áudio...", audioMsgId);
 
   const fileId = msg.voice.file_id;
 
@@ -298,7 +307,7 @@ try {
   }
 
   // envia confirmação com botões
-  await enviarConfirmacao(chatId, dados, tabela);
+await enviarConfirmacao(chatId, dados, tabela, audioMsgId);
 
   console.log("Texto processado:", texto);
 
