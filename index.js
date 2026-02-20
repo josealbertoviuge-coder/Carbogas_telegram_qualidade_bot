@@ -13,6 +13,7 @@ function normalizarTexto(texto) {
     "dois pontos": ":",
     "vírgula": ",",
     "traço": "-",
+    "não aplicável": "N/A",
     "ponto": "."
   };
 
