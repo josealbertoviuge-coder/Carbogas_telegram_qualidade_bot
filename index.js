@@ -68,13 +68,26 @@ function extrairCampos(texto) {
   const tag = texto.match(/\bTAG\s+([A-Z0-9\-]+)/);
   if (tag) dados.tag = tag[1];
 
-  const ordem = texto.match(/\b(?:ORDEM(?:\s+DE\s+PRODUÇÃO)?|OP)\s+([A-Z0-9\/\-]+)/);
-  if (ordem) dados.ordem = ordem[1];
+  const OP = texto.match(/\b(?:ORDEM(?:\s+DE\s+PRODUÇÃO)?|OP)\s+([A-Z0-9\/\-]+)/);
+  if (OP) dados.OP = OP[1];
 
   const observacoes = texto.match(/\bOBSERVAÇÕES?\s+(.+)/);
   if (observacoes) dados.observacoes = observacoes[1];
 
   return dados;
+}
+
+async function salvarSupabase(dados) {
+  await fetch("https://weqlfktnorahxteiypul.supabase.co/rest/v1/tags", {
+    method: "POST",
+    headers: {
+      "apikey": process.env.SUPABASE_KEY,
+      "Authorization": `Bearer ${process.env.SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "return=minimal"
+    },
+    body: JSON.stringify(dados)
+  });
 }
 
 async function enviarMensagem(chatId, texto) {
@@ -148,6 +161,7 @@ texto = normalizarTexto(texto);
 texto = converterNumeros(texto);
 const dados = extrairCampos(texto);
 console.log("Dados extraídos:", dados);
+await salvarSupabase(dados);
 
 console.log("Texto processado:", texto);
 
