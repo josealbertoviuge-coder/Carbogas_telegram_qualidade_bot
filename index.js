@@ -36,16 +36,12 @@ function extrairTabela(texto) {
 async function enviarConfirmacao(chatId, dados, tabela, replyTo) {
   const id = gerarId();
 
-  // salva temporariamente
-  pendentes.set(id, { dados, tabela });
-  setTimeout(() => pendentes.delete(id), 30 * 60 * 1000);
-
-  await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+  const resp = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId,
-      reply_to_message_id: replyTo,   // ⭐ liga resposta ao áudio correto
+      reply_to_message_id: replyTo,
       text:
 `📋 REGISTRO:
 
@@ -64,6 +60,20 @@ Os dados estão corretos?`,
       }
     })
   });
+
+  const json = await resp.json();
+
+  // salva message_id do registro
+  pendentes.set(id, {
+    dados,
+    tabela,
+    messageId: json.result.message_id
+  });
+
+setTimeout(() => {
+  const reg = pendentes.get(id);
+  if (reg) reg.expirado = true;
+}, 30 * 60 * 1000);
 }
 
 function normalizarTexto(texto) {
@@ -225,7 +235,11 @@ try {
   // ❌ CANCELAR
   if (acao === "cancelar") {
     pendentes.delete(id);
-    await enviarMensagem(chatId, "❌ Registro cancelado.");
+await enviarMensagem(
+  chatId,
+  "❌ Registro cancelado.",
+  registro.messageId
+);
     return res.sendStatus(200);
   }
 
@@ -233,10 +247,16 @@ try {
   if (acao === "confirmar") {
     const registro = pendentes.get(id);
 
-    if (!registro) {
-      await enviarMensagem(chatId, "⚠️ Registro expirado.");
-      return res.sendStatus(200);
-    }
+if (!registro || registro.expirado) {
+  await enviarMensagem(
+    chatId,
+    "⚠️ Registro expirado.",
+    registro?.messageId
+  );
+
+  pendentes.delete(id);
+  return res.sendStatus(200);
+}
 
     try {
       await salvarSupabase(registro.dados);
@@ -248,7 +268,11 @@ try {
 
     pendentes.delete(id);
 
-    await enviarMensagem(chatId, "✅ Dados gravados com sucesso!");
+await enviarMensagem(
+  chatId,
+  "✅ Dados gravados com sucesso!",
+  registro.messageId
+);
     return res.sendStatus(200);
   }
 }
