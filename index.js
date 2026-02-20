@@ -62,6 +62,21 @@ function converterNumeros(texto) {
   return texto;
 }
 
+function extrairCampos(texto) {
+  const dados = {};
+
+  const tag = texto.match(/\bTAG\s+(\S+)/);
+  if (tag) dados.tag = tag[1];
+
+  const ordem = texto.match(/\b(?:ORDEM(?:\s+DE\s+PRODUÇÃO)?|OP)\s+(\S+)/);
+  if (ordem) dados.ordem = ordem[1];
+
+  const observacoes = texto.match(/\bOBSERVAÇÕES\s+(\d+)/);
+  if (observacoes) dados.observacoes = observacoes[1];
+
+  return dados;
+}
+
 async function enviarMensagem(chatId, texto) {
   await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: "POST",
@@ -131,11 +146,16 @@ let texto = await transcreverAudio(fileUrl);
 // aplica inteligência
 texto = normalizarTexto(texto);
 texto = converterNumeros(texto);
+const dados = extrairCampos(texto);
+console.log("Dados extraídos:", dados);
 
 console.log("Texto processado:", texto);
 
   if (texto) {
-    await enviarMensagem(chatId, "📝 Registro:\n" + texto);
+await enviarMensagem(
+  chatId,
+  "📋 REGISTRO:\n" + JSON.stringify(dados, null, 2)
+);
   } else {
     await enviarMensagem(chatId, "Não consegui entender o áudio.");
   }
