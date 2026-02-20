@@ -239,15 +239,19 @@ if (req.body.callback_query) {
   const registro = pendentes.get(id);
 
   // ❌ CANCELAR
-  if (acao === "cancelar") {
-    await enviarMensagem(
-      chatId,
-      "❌ Registro cancelado.",
-      registro?.messageId
-    );
-    pendentes.delete(id);
-    return res.sendStatus(200);
-  }
+if (acao === "cancelar") {
+  const registro = pendentes.get(id);
+
+  pendentes.delete(id);
+
+  await enviarMensagem(
+    chatId,
+    "❌ Registro cancelado.",
+    registro?.messageId
+  );
+
+  return res.sendStatus(200);
+}
 
   // ⚠️ EXPIRADO
   if (!registro || registro.expirado) {
