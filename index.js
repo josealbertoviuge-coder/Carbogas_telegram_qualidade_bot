@@ -7,6 +7,43 @@ app.use(express.json());
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
 
+async function removerBotoes(chatId, messageId) {
+  await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageReplyMarkup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: { inline_keyboard: [] }
+    })
+  });
+}
+
+function extrairTabela(texto) {
+  const match = texto.match(/INCLUIR NA TABELA\s+([A-Z]+)/);
+  return match ? match[1].toLowerCase() : null;
+}
+
+async function enviarConfirmacao(chatId, dados, tabela) {
+  await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text:
+        `📋 REGISTRO:\n\nTAG: ${dados.tag}\nOP: ${dados.op || "-"}\nOBS: ${dados.observacoes || "-"}\n\nOs dados estão corretos?`,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "✅ SIM", callback_data: `confirmar|${tabela}|${JSON.stringify(dados)}` },
+            { text: "❌ NÃO", callback_data: "cancelar" }
+          ]
+        ]
+      }
+    })
+  });
+}
+
 function normalizarTexto(texto) {
   const substituicoes = {
     "barra": "/",
@@ -84,16 +121,21 @@ function extrairCampos(texto) {
 }
 
 async function salvarSupabase(dados) {
-  await fetch("https://weqlfktnorahxteiypul.supabase.co/rest/v1/tags", {
+  const resp = await fetch("https://weqlfktnorahxteiypul.supabase.co/rest/v1/tags", {
     method: "POST",
     headers: {
-      "apikey": process.env.SUPABASE_KEY,
-      "Authorization": `Bearer ${process.env.SUPABASE_KEY}`,
+      apikey: process.env.SUPABASE_KEY,
+      Authorization: `Bearer ${process.env.SUPABASE_KEY}`,
       "Content-Type": "application/json",
-      "Prefer": "return=minimal"
+      Prefer: "return=minimal"
     },
     body: JSON.stringify(dados)
   });
+
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error(txt);
+  }
 }
 
 async function enviarMensagem(chatId, texto) {
@@ -132,10 +174,56 @@ async function transcreverAudio(fileUrl) {
 
   console.log("Resposta OpenAI:", data);
 
-  return data.text;
+return data.text || "";
 }
 
 app.post(`/bot${TOKEN}`, async (req, res) => {
+
+// ✅ TRATAR CLIQUE DOS BOTÕES
+if (req.body.callback_query) {
+  const query = req.body.callback_query;
+  const chatId = query.message.chat.id;
+  const data = query.data;
+
+  // remove loading do botão
+  await fetch(`https://api.telegram.org/bot${TOKEN}/answerCallbackQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      callback_query_id: query.id
+    })
+  });
+
+  // 🟢 remove botões após clicar
+  await removerBotoes(chatId, query.message.message_id);
+
+  if (data === "cancelar") {
+    await enviarMensagem(chatId, "❌ Registro cancelado.");
+    return res.sendStatus(200);
+  }
+
+  if (data.startsWith("confirmar")) {
+    const [, tabela, json] = data.split("|");
+let dados;
+try {
+  dados = JSON.parse(json);
+} catch {
+  await enviarMensagem(chatId, "Erro ao processar os dados.");
+  return res.sendStatus(200);
+}
+
+try {
+  await salvarSupabase(dados);
+} catch (err) {
+  console.log(err);
+  await enviarMensagem(chatId, "Erro ao salvar no banco.");
+  return res.sendStatus(200);
+}
+
+    await enviarMensagem(chatId, "✅ Dados gravados com sucesso!");
+    return res.sendStatus(200);
+  }
+}
   const msg = req.body.message;
 
   if (!msg) return res.sendStatus(200);
@@ -154,39 +242,48 @@ if (msg.voice) {
   ).then(r => r.json());
 
   const filePath = fileInfo.result.file_path;
-
   const fileUrl = `https://api.telegram.org/file/bot${TOKEN}/${filePath}`;
 
   console.log("URL do áudio:", fileUrl);
 
   // 🎤 TRANSCRIÇÃO
-let texto = await transcreverAudio(fileUrl);
-
-// aplica inteligência
-texto = normalizarTexto(texto);
-texto = converterNumeros(texto);
-const dados = extrairCampos(texto);
-console.log("Dados extraídos:", dados);
-
-// ❗ não salvar se não houver TAG
-if (!dados.tag) {
-  await enviarMensagem(chatId, "⚠️ TAG não informada.");
+let texto;
+try {
+  texto = await transcreverAudio(fileUrl);
+} catch (err) {
+  console.log(err);
+  await enviarMensagem(chatId, "Erro ao transcrever áudio.");
   return res.sendStatus(200);
 }
 
-// salva apenas se válido
-await salvarSupabase(dados);
+  // aplica inteligência
+  texto = normalizarTexto(texto);
+  texto = converterNumeros(texto);
 
-console.log("Texto processado:", texto);
+  const dados = extrairCampos(texto);
+  console.log("Dados extraídos:", dados);
 
-  if (texto) {
-await enviarMensagem(
-  chatId,
-  "📋 REGISTRO:\n" + JSON.stringify(dados, null, 2)
-);
-  } else {
-    await enviarMensagem(chatId, "Não consegui entender o áudio.");
+  // valida TAG
+  if (!dados.tag) {
+    await enviarMensagem(chatId, "⚠️ TAG não informada.");
+    return res.sendStatus(200);
   }
+
+  // identifica tabela falada
+  const tabela = extrairTabela(texto);
+
+  if (!tabela) {
+    await enviarMensagem(chatId, "Diga: incluir na tabela TAGs");
+    return res.sendStatus(200);
+  }
+
+  // envia confirmação com botões
+  await enviarConfirmacao(chatId, dados, tabela);
+
+  console.log("Texto processado:", texto);
+
+  // ⚠️ para execução aqui e aguarda confirmação
+  return res.sendStatus(200);
 } else if (msg.text) {
   console.log("Texto:", msg.text);
 
