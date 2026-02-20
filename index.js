@@ -13,15 +13,19 @@ function gerarId() {
 }
 
 async function removerBotoes(chatId, messageId) {
-  await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageReplyMarkup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      message_id: messageId,
-      reply_markup: { inline_keyboard: [] }
-    })
-  });
+  try {
+    await fetch(`https://api.telegram.org/bot${TOKEN}/editMessageReplyMarkup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: [] }
+      })
+    });
+  } catch (err) {
+    console.log("Erro ao remover botões:", err);
+  }
 }
 
 function extrairTabela(texto) {
